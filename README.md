@@ -16,3 +16,9 @@ At the moment November 2023 the "marking mode" (Sketch 1) only supports until 7 
 Please feel free to change the code or adapt to your situation.
 
 THANKS a lot to Valentin for support :-)
+
+
+edit: this was cloned originally from https://github.com/alexb933/AOG_Amazone_CAN_SectionControl
+
+I've tried to simplify this a lot, mainly for my own understanding, with a view to moving it into Teensy/AIO integration
+Also, the codes for sections didn't match the UF01 Amatron+ I was looking at. There was no amaclick on this, but it did have a joystick.
