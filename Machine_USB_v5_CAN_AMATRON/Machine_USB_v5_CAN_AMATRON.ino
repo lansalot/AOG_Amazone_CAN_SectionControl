@@ -14,6 +14,7 @@
  *
  * Section 0 to 5 -- D7 to D12 ??
  * edited for Amatron CAN BUS by Alexander Beck/Valentin /Nov 2023
+ * changed for older Amatron kit (no Amaclick or individual section control) by lansalot
  */
 
 // loop time variables in microseconds
@@ -44,7 +45,6 @@ byte AmaClick_addressClaim[8] = {0x28, 0xEC, 0x44, 0x0C, 0x00, 0x80, 0x1A, 0x20}
 
 // send to Amatron a message to change Sections
 uint8_t AmaClick_data[8] = {0x21, 0xFA, 0x00, 0x00, 0x00, 0x00, 0x01, 0x09};
-
 
 byte AmaClick_data_byte2 = 0b00000000; // needed for section 1-8
 byte AmaClick_data_byte3 = 0b00000000; // needed for section 9-16 & mainswitch
@@ -120,12 +120,11 @@ int16_t tempHeader = 0;
 
 uint8_t AOG[] = {0x80, 0x81, 0x7f, 0xED, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0xCC};
 
-// The variables used for storage
+
 uint8_t relayHi = 0, relayLo = 0, tramline = 0, uTurn = 0, hydLift = 0, geoStop = 0;
 float gpsSpeed;
 
 uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
-
 
 // Byte 0 - 0 = section change
 // byte 1 - sections 1-8 bitmap
@@ -133,27 +132,58 @@ uint8_t raiseTimer = 0, lowerTimer = 0, lastTrigger = 0;
 // note that we're going to read the 64-section PGN here, but for testing, we'll limit to first 16
 // byte 5 - status: A5, bit 0
 // byte 6 - PGN
-uint8_t FlagData[8] = {1,2,3,4,5,6,7,8};
-uint8_t CANDebugData44[8] = {0, 0, 0, 0, 0, 0, 0, 0};
-uint8_t CANDebugData45[8] = {0, 0, 0, 0, 0, 0, 0, 0};
+uint8_t FlagData[8] = {1, 2, 3, 4, 5, 6, 7, 8};
+
+enum CANCommands {
+    LeftOn,
+    LeftOff,
+    RightOn,
+    RightOff,
+    AllOn,
+    AllOff
+};
+uint8_t CANSectionLeftOn[8] =   { 0x21, 0x0A, 0xFF, 0xFF, 0x99, 0x99, 0x01, 0xFF };
+uint8_t CANSectionLeftOff[8] =  { 0x21, 0x0B, 0xFF, 0xFF, 0x99, 0x99, 0x01, 0xFF };
+uint8_t CANSectionRightOn[8] =  { 0x21, 0x0C, 0xFF, 0xFF, 0x99, 0x99, 0x01, 0xFF };
+uint8_t CANSectionRightOff[8] = { 0x21, 0x0D, 0xFF, 0xFF, 0x99, 0x99, 0x01, 0xFF };
+
 uint8_t aogSections[8] = {0, 0, 0, 0, 0, 0, 0, 0};
 
-void updateCANDebug(uint8_t* dataArray, uint32_t CANBusID, uint8_t byte, uint8_t bit, uint8_t value)
+void SendCANMessage( uint8_t *data)
 {
-  // if (CANBusID == 0x11223344)
-  //   return;
-  dataArray[byte] = bitWrite(dataArray[byte], bit, value);
-  CAN.sendMsgBuf(CANBusID, 1, 8, dataArray);
-}
-void updateCANDebug(uint8_t* dataArray, uint32_t CANBusID, uint8_t byte, uint8_t value)
-{
-  // if (CANBusID == 0x11223344)
-  //   return;
-  dataArray[byte] = value;
-  CAN.sendMsgBuf(CANBusID, 1, 8, dataArray);
+	CAN.sendMsgBuf(0x1Ce6FFCF, 1, 8, data);
 }
 
-
+void SendSectionCommand(CANCommands c, uint8_t count)
+{
+    uint8_t command[8];
+	switch (c)
+	{
+	case LeftOn:
+		memcpy(command, CANSectionLeftOn, 8);
+        SendCANMessage(command);
+		break;
+	case LeftOff:
+		memcpy(command, CANSectionLeftOff, 8);
+		SendCANMessage(command);
+		break;
+	case RightOn:
+        memcpy(command, CANSectionRightOn, 8);
+        SendCANMessage(command);
+		break;
+	case RightOff:
+		memcpy(command, CANSectionRightOff, 8);
+        SendCANMessage(command);
+        break;
+	case AllOn:
+        memcpy(command, CANSectionRightOn, 8);
+        for(int i = 0; i < 8; i++) SendCANMessage(command);
+        memcpy(command, CANSectionLeftOn, 8);
+        for (int i = 0; i < 8; i++) SendCANMessage(command);
+    case AllOff:
+		break;
+	}
+}
 
 void setup()
 {
@@ -195,11 +225,11 @@ void setup()
   CAN.init_Filt(1, 1, 0x1CE72687); // second filter: 0x1CE72687 is ID for AMATRON section status
 
   // send first Claim Adress to Amatron to send future data
+  // byte AmaClick_addressClaim[8] = {0x28, 0xEC, 0x44, 0x0C, 0x00, 0x80, 0x1A, 0x20};
   CAN.sendMsgBuf(0x18EEFFCE, 1, 8, AmaClick_addressClaim); // input from Valentin
   // Serial.println("Address Claimed");
   //-----------------------------------------------
 }
-
 
 void loop()
 {
@@ -325,11 +355,9 @@ void loop()
     // when you use a switch with LED connect A3 to plus and GND to GND
 
     buttonState = digitalRead(A5); // current state of the button
-    updateCANDebug(CANDebugData44, 0x11223344, 5, 0, buttonState);
     if (buttonState == 1)
     { // notpressed
       digitalWrite(A3, LOW);
-      updateCANDebug(CANDebugData44, 0x11223344, 4, 1, 1);
       if (currentTimeCAN - lastCANMessageTime <= LOOP_TIME_NO_CANMESSAGE)
       {
         send_AOG_sections[9] = send_AOG_sectionsbyte9_on, HEX;
@@ -369,7 +397,8 @@ void loop()
 
     if (buttonState == 0)
     {
-
+      // is this actually triggering?? By the look of logs, this ID never changes on the wire
+      // put BUTTONSTATE into the debug output
       if (currentTimeCAN - lastCANMessageTime <= LOOP_TIME_NO_CANMESSAGE)
       {
         getSectionInformationfromAOG();
@@ -378,6 +407,10 @@ void loop()
         AmaClick_data[3] = AmaClick_data_byte3, HEX;
 
         // send CAN message
+        // send to Amatron a message to change Sections
+        // uint8_t AmaClick_data[8] = {0x21, 0xFA, 0x00, 0x00, 0x00, 0x00, 0x01, 0x09};
+        // byte AmaClick_data_byte2 = 0b00000000; // needed for section 1-8
+        // byte AmaClick_data_byte3 = 0b00000000; // needed for section 9-16 & mainswitch
         CAN.sendMsgBuf(0x18E6FFCE, 1, 8, AmaClick_data);
         delay(10);
       }
@@ -441,7 +474,6 @@ void loop()
   // The data package
   if (Serial.available() > dataLength && isHeaderFound && isPGNFound)
   {
-    updateCANDebug(CANDebugData44, 0x11223344, 6, pgn);
     if (pgn == 0xEF) // EF Machine Data
     {
       uTurn = Serial.read();
@@ -518,12 +550,10 @@ void loop()
       // save in EEPROM and restart
       EEPROM.put(20, pin);
       // resetFunc();
-      updateCANDebug(CANDebugData45, 0x11223346, 0, pin);
       // reset for next pgn sentence
       isHeaderFound = isPGNFound = false;
       pgn = dataLength = 0;
     }
-
 
     else if (pgn == 0xE5) // EC Relay Pin Settings
     {
@@ -531,11 +561,8 @@ void loop()
       {
         aogSections[i] = Serial.read();
       }
-      CANDebugData45[0] = aogSections[0];
-      CANDebugData45[1] = aogSections[1];
       FlagData[6] = aogSections[0];
       FlagData[7] = aogSections[1];
-      updateCANDebug(FlagData, 0x11223346, 0, {FlagData});
     }
     else // nothing found, clean up
     {
@@ -550,18 +577,15 @@ void SetRelays(void)
   // pin, rate, duration  130 pp meter, 3.6 kmh = 1 m/sec or gpsSpeed * 130/3.6 or gpsSpeed * 36.1111
   // gpsSpeed is 10x actual speed so 3.61111
   gpsSpeed *= 3.61111;
-  updateCANDebug(CANDebugData44, 0x11223344, 7, 1, 1);
   // tone(13, gpsSpeed);
   // Load the current pgn relay state - Sections
   for (uint8_t i = 0; i < 8; i++)
   {
     relayState[i] = bitRead(relayLo, i);
-    updateCANDebug(CANDebugData44, 0x11223344, 0, i, relayState[i]);
   }
   for (uint8_t i = 0; i < 8; i++)
   {
     relayState[i + 8] = bitRead(relayHi, i);
-    updateCANDebug(CANDebugData44, 0x11223344, 1, i, relayState[i + 8]);
   }
 
   // Hydraulics
@@ -573,7 +597,7 @@ void SetRelays(void)
   relayState[19] = bitRead(tramline, 1); // left
 
   // GeoStop
-  relayState[20] = 0 ; //(geoStop == 0) ? 0 : 1;
+  relayState[20] = 0; //(geoStop == 0) ? 0 : 1;
 
   /*
         // if (pin[0]) digitalWrite(13, relayState[pin[0]-1]);
@@ -616,23 +640,21 @@ void getSectionInformationfromAOG(void)
     isOnerelayPositiv = isOnerelayPositiv + relayState[i];
   }
   if (isOnerelayPositiv != 0)
-    bitWrite(AmaClick_data_byte3, 7, 1); // byte 3, bit 7 defines MainSwitch /// ANDREW LOOK AT THIS
+    bitWrite(AmaClick_data_byte3, 7, 0); // byte 3, bit 7 defines MainSwitch /// ANDREW LOOK AT THIS
   if (isOnerelayPositiv == 0)
     bitWrite(AmaClick_data_byte3, 7, 1);
 
   // write relayState into the bits of CAN message
   for (int i = 0; i < 8; i++)
   {
-    updateCANDebug(FlagData, 0x11223347, 1, i, relayState[i]);
     bitWrite(AmaClick_data_byte2, i, relayState[i]);
   }
 
   for (int i = 0; i < 5; i++)
   {
-    updateCANDebug(CANDebugData44, 0x11223344, 2, i, relayState[i]);
     bitWrite(AmaClick_data_byte3, i, relayState[i + 8]);
   }
-  bitWrite(AmaClick_data_byte3, 7, 1);
+  //  bitWrite(AmaClick_data_byte3, 7, 1);
 }
 
 void switchSection(uint8_t sectionIndex, uint8_t state)
@@ -642,6 +664,16 @@ void switchSection(uint8_t sectionIndex, uint8_t state)
   delay(1);
 }
 
+void ScanBinaryString(const String &binaryString, int &sectionLength, int &firstChangeIndex, int &lastChangeIndex) {
+    firstChangeIndex = binaryString.lastIndexOf('1');
+    lastChangeIndex = binaryString.indexOf('1');
+    if (firstChangeIndex != -1 && lastChangeIndex != -1) {
+        sectionLength = firstChangeIndex - lastChangeIndex + 1;
+    } else {
+        sectionLength = 0; // No '1's in the string
+    }
+}
+
 void getSectionInformationfromAmatron(void)
 {
   uint32_t rxID;
@@ -649,19 +681,22 @@ void getSectionInformationfromAmatron(void)
   unsigned char buf[8];
 
   // let's hard-code first section on
-  switchSection(0,1);
+  // switchSection(0,1);
 
   if (CAN_MSGAVAIL == CAN.checkReceive()) // check if data coming
   {
-    updateCANDebug(CANDebugData44, 0x11223344, 4, 0xff);
     CAN.readMsgBuf(&len, buf); // read data,  len: data length, buf: data buf
     rxID = CAN.getCanId();
     if (rxID == 0x1CE72687)
-    { // ID for sections info is 1CE7268.
+    { // ID for sections info is 1CE72687.
 
+      // a0 is a change, section is as buf[1] below and [3] is 1/0 for on/off
       // The data according to this ID defines which section is on/off buf[3] delivers on/off 1/0 and buf[1] delivers which section
       // take note, these are different IDs compared to that in the original code
-      if (buf[3] == 1 || buf[3] == 0)
+
+      //Check these in the DBC file !!!
+
+      if (buf[0] == 0xA0 && (buf[3] == 1 || buf[3] == 0))
       {
         switch (buf[1])
         {
@@ -688,6 +723,10 @@ void getSectionInformationfromAmatron(void)
           break;
         }
       }
+      //         bitWrite(send_AOG_sectionsbyte9_on, 0, 1);
+      // bitWrite(send_AOG_sectionsbyte10_off, 0, 0);
+      //         bitWrite(send_AOG_sectionsbyte9_on, 1, 0);
+      // bitWrite(send_AOG_sectionsbyte10_off, 0, 0);
     }
   }
 }

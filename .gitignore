@@ -1,0 +1,6 @@
+﻿################################################################################
+# This .gitignore file was automatically created by Microsoft(R) Visual Studio.
+################################################################################
+
+/Machine_USB_v5_CAN_AMATRON/.vs/Machine_USB_v5_CAN_AMATRON
+/Machine_USB_v5_CAN_AMATRON/__vm

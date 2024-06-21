@@ -1,0 +1,35 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.9.34728.123
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Machine_USB_v5_CAN_AMATRON", "Machine_USB_v5_CAN_AMATRON.vcxproj", "{62A63476-57F3-4840-9503-49A0CF390EDB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|ARM = Debug|ARM
+		Debug|ARM64 = Debug|ARM64
+		Release|ARM = Release|ARM
+		Release|ARM64 = Release|ARM64
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Debug|ARM.ActiveCfg = Debug|ARM
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Debug|ARM.Build.0 = Debug|ARM
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Debug|ARM.Deploy.0 = Debug|ARM
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Debug|ARM64.ActiveCfg = Debug|ARM64
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Debug|ARM64.Build.0 = Debug|ARM64
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Debug|ARM64.Deploy.0 = Debug|ARM64
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Release|ARM.ActiveCfg = Release|ARM
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Release|ARM.Build.0 = Release|ARM
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Release|ARM.Deploy.0 = Release|ARM
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Release|ARM64.ActiveCfg = Release|ARM64
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Release|ARM64.Build.0 = Release|ARM64
+		{62A63476-57F3-4840-9503-49A0CF390EDB}.Release|ARM64.Deploy.0 = Release|ARM64
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {F1C3423C-90F0-4940-85B8-023A7A08409D}
+	EndGlobalSection
+EndGlobal
